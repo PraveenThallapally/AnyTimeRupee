@@ -1,0 +1,240 @@
+<!-- ============================================ -->
+<!-- FILE: templates/index.html -->
+<!-- ============================================ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persons Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>👥 Persons Management System</h1>
+            <p>3-Tier Architecture: Flask + RDS MySQL</p>
+        </header>
+ 
+        <!-- Add/Edit Person Form -->
+        <div class="form-container">
+            <h2 id="form-title">Add New Person</h2>
+            <form id="personForm">
+                <input type="hidden" id="personId">
+                
+                <div class="form-group">
+                    <label for="name">Name *</label>
+                    <input type="text" id="name" required placeholder="Enter full name">
+                </div>
+ 
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" required placeholder="Enter email address">
+                </div>
+ 
+                <div class="form-group">
+                    <label for="phone">Phone</label>
+                    <input type="tel" id="phone" placeholder="Enter phone number">
+                </div>
+ 
+                <div class="form-group">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" min="1" max="120" placeholder="Enter age">
+                </div>
+ 
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <textarea id="address" rows="3" placeholder="Enter full address"></textarea>
+                </div>
+ 
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Add Person</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn" onclick="resetForm()">Cancel</button>
+                </div>
+            </form>
+        </div>
+ 
+        <!-- Persons List -->
+        <div class="table-container">
+            <h2>📋 Persons List</h2>
+            <div id="loading" class="loading">Loading...</div>
+            <div id="error" class="error"></div>
+            
+            <table id="personsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Age</th>
+                        <th>Address</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="personsTableBody">
+                    <!-- Data will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+ 
+    <script>
+        // API Base URL
+        const API_URL = '/api/persons';
+ 
+        // Load persons on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPersons();
+        });
+ 
+        // Form submission
+        document.getElementById('personForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const personId = document.getElementById('personId').value;
+            const personData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value || null,
+                age: document.getElementById('age').value || null,
+                address: document.getElementById('address').value || null
+            };
+ 
+            try {
+                let response;
+                if (personId) {
+                    // Update existing person
+                    response = await fetch(`${API_URL}/${personId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(personData)
+                    });
+                } else {
+                    // Create new person
+                    response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(personData)
+                    });
+                }
+ 
+                const result = await response.json();
+ 
+                if (response.ok) {
+                    alert(result.message);
+                    resetForm();
+                    loadPersons();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+ 
+        // Load all persons
+        async function loadPersons() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const tbody = document.getElementById('personsTableBody');
+ 
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            tbody.innerHTML = '';
+ 
+            try {
+                const response = await fetch(API_URL);
+                const persons = await response.json();
+ 
+                loading.style.display = 'none';
+ 
+                if (persons.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No persons found. Add one above!</td></tr>';
+                    return;
+                }
+ 
+                persons.forEach(person => {
+                    const row = `
+                        <tr>
+                            <td>${person.id}</td>
+                            <td>${person.name}</td>
+                            <td>${person.email}</td>
+                            <td>${person.phone || '-'}</td>
+                            <td>${person.age || '-'}</td>
+                            <td>${person.address || '-'}</td>
+                            <td>
+                                <button class="btn-action btn-edit" onclick="editPerson(${person.id})">Edit</button>
+                                <button class="btn-action btn-delete" onclick="deletePerson(${person.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                error.textContent = 'Error loading persons: ' + err.message;
+            }
+        }
+ 
+        // Edit person
+        async function editPerson(id) {
+            try {
+                const response = await fetch(`${API_URL}/${id}`);
+                const person = await response.json();
+ 
+                if (response.ok) {
+                    document.getElementById('personId').value = person.id;
+                    document.getElementById('name').value = person.name;
+                    document.getElementById('email').value = person.email;
+                    document.getElementById('phone').value = person.phone || '';
+                    document.getElementById('age').value = person.age || '';
+                    document.getElementById('address').value = person.address || '';
+ 
+                    document.getElementById('form-title').textContent = 'Edit Person';
+                    document.getElementById('submitBtn').textContent = 'Update Person';
+                    
+                    // Scroll to form
+                    document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('Error: ' + person.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+ 
+        // Delete person
+        async function deletePerson(id) {
+            if (!confirm('Are you sure you want to delete this person?')) {
+                return;
+            }
+ 
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+ 
+                if (response.ok) {
+                    alert(result.message);
+                    loadPersons();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+ 
+        // Reset form
+        function resetForm() {
+            document.getElementById('personForm').reset();
+            document.getElementById('personId').value = '';
+            document.getElementById('form-title').textContent = 'Add New Person';
+            document.getElementById('submitBtn').textContent = 'Add Person';
+        }
+    </script>
+</body>
+</html>
