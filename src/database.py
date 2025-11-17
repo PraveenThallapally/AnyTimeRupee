@@ -66,4 +66,3 @@ def init_database():
         print("✅ Database initialized successfully! Table 'persons' ready.")
     except Exception as e:
         print(f"❌ Error initializing database: {e}")
-        # Don't raise - let app start even if table creation fails

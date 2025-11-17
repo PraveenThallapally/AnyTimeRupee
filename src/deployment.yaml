@@ -16,6 +16,6 @@ spec:
       serviceAccountName: my-app-sa
       containers:
       - name: python-app
-        image: praveen1351/anytimerupee:v3
+        image: praveen1351/anytimerupee:v4
         ports:
         - containerPort: 5000
